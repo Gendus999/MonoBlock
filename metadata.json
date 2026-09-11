@@ -1,0 +1,6 @@
+{
+  "name": "Block Blast",
+  "description": "Minimalistická Block Blast logická hra s čiernym pozadím, žiariacimi bielymi blokmi a plynulými animáciami.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

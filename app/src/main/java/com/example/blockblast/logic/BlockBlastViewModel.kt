@@ -7,6 +7,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.blockblast.audio.GameHaptics
+import com.example.blockblast.model.AssistantMode
 import com.example.blockblast.model.BlockPiece
 import com.example.blockblast.model.FloatingAlert
 import com.example.blockblast.model.GRID_SIZE
@@ -37,19 +38,47 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
     val dragState: StateFlow<DragState> = _dragState.asStateFlow()
 
     init {
-        val savedHigh = prefs.getInt("HIGH_SCORE", 0)
+        val legacyHigh = prefs.getInt("HIGH_SCORE", 0)
+        val scoreLot = prefs.getInt(AssistantMode.LOT.prefKey, 0)
+        val scoreMedium = prefs.getInt(AssistantMode.MEDIUM.prefKey, 0)
+        val scoreLow = prefs.getInt(AssistantMode.LOW.prefKey, 0)
+        val scoreOff = prefs.getInt(AssistantMode.OFF.prefKey, legacyHigh)
+
+        val scoresMap = mapOf(
+            AssistantMode.LOT to scoreLot,
+            AssistantMode.MEDIUM to scoreMedium,
+            AssistantMode.LOW to scoreLow,
+            AssistantMode.OFF to scoreOff
+        )
+
+        val savedModeStr = prefs.getString("ASSISTANT_MODE", AssistantMode.OFF.name)
+        val savedAssistantMode = AssistantMode.fromString(savedModeStr)
+
         val savedExtraordinary = prefs.getBoolean("EXTRAORDINARY_BLOCKS", false)
         val savedWhiteBorder = prefs.getBoolean("WHITE_BORDER", true)
         val savedPuzzleBorder = prefs.getBoolean("PUZZLE_BORDER", false)
         val savedGridBorder = prefs.getBoolean("GRID_BORDER", true)
+        val savedHaptics = prefs.getBoolean("HAPTICS_ENABLED", true)
+        haptics.isHapticsEnabled = savedHaptics
+
+        val currentHigh = scoresMap[savedAssistantMode] ?: 0
+
         _gameState.update {
+            val emptyGrid = List(GRID_SIZE) { List(GRID_SIZE) { 0 } }
             it.copy(
-                highScore = savedHigh,
+                highScore = currentHigh,
+                assistantMode = savedAssistantMode,
+                highScoresByMode = scoresMap,
                 isExtraordinaryEnabled = savedExtraordinary,
                 isWhiteBorderEnabled = savedWhiteBorder,
                 isPuzzleBorderEnabled = savedPuzzleBorder,
                 isGridBorderEnabled = savedGridBorder,
-                candidatePieces = BlockPiece.generatePieceSet(allowExtraordinary = savedExtraordinary)
+                isHapticsEnabled = savedHaptics,
+                candidatePieces = BlockPiece.generateAssistedPieceSet(
+                    grid = emptyGrid,
+                    assistantMode = savedAssistantMode,
+                    allowExtraordinary = savedExtraordinary
+                )
             )
         }
     }
@@ -127,31 +156,59 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
         val exactCol = if (step > 0) relX / step else 0f
         val exactRow = if (step > 0) relY / step else 0f
 
-        val idealCol = Math.round(exactCol)
-        val idealRow = Math.round(exactRow)
+        val maxCol = (GRID_SIZE - piece.width).coerceAtLeast(0)
+        val maxRow = (GRID_SIZE - piece.height).coerceAtLeast(0)
 
-        val grid = _gameState.value.grid
+        // Check if piece is reasonably near the board (reach tolerance for edges)
+        val isNearBoard = exactCol >= -1.8f && exactCol <= (maxCol + 1.8f) &&
+                          exactRow >= -1.8f && exactRow <= (maxRow + 1.8f)
 
-        // Accurate placement resolution:
-        // 1. Check direct rounded position
         var resolvedTarget: Pair<Int, Int>? = null
-        if (canPlace(piece, idealRow, idealCol, grid)) {
-            resolvedTarget = Pair(idealRow, idealCol)
-        } else {
-            // 2. Magnetic snapping to nearest valid candidate within reach
-            var minDistanceSq = Float.MAX_VALUE
-            for (dr in -1..1) {
-                for (dc in -1..1) {
-                    val r = idealRow + dr
-                    val c = idealCol + dc
-                    if (canPlace(piece, r, c, grid)) {
-                        val dRow = exactRow - r
-                        val dCol = exactCol - c
-                        val distSq = dRow * dRow + dCol * dCol
-                        // Generous magnetic threshold (~0.77 cell radius)
-                        if (distSq < minDistanceSq && distSq <= 0.60f) {
-                            minDistanceSq = distSq
-                            resolvedTarget = Pair(r, c)
+
+        if (isNearBoard) {
+            val grid = _gameState.value.grid
+
+            // 1. Clamped position for edge attraction:
+            // When dragged against the bezel/edges, player intent is the edge column/row
+            val clampedCol = exactCol.coerceIn(0f, maxCol.toFloat())
+            val clampedRow = exactRow.coerceIn(0f, maxRow.toFloat())
+
+            val idealCol = Math.round(clampedCol)
+            val idealRow = Math.round(clampedRow)
+
+            // Direct fit check at clamped ideal cell
+            if (canPlace(piece, idealRow, idealCol, grid)) {
+                val dRow = clampedRow - idealRow
+                val dCol = clampedCol - idealCol
+                if (dRow * dRow + dCol * dCol <= 0.70f) {
+                    resolvedTarget = Pair(idealRow, idealCol)
+                }
+            }
+
+            // 2. If not directly placed or slightly offset, search nearest valid placement with magnetic snapping
+            if (resolvedTarget == null) {
+                var minDistanceSq = Float.MAX_VALUE
+                val prevTarget = currentDrag.targetCell
+
+                for (dr in -2..2) {
+                    for (dc in -2..2) {
+                        val r = idealRow + dr
+                        val c = idealCol + dc
+                        if (r in 0..maxRow && c in 0..maxCol && canPlace(piece, r, c, grid)) {
+                            val dRow = clampedRow - r
+                            val dCol = clampedCol - c
+                            var distSq = dRow * dRow + dCol * dCol
+
+                            // Apply small hysteresis/stickiness to currently locked target to prevent jitter
+                            if (prevTarget != null && prevTarget.first == r && prevTarget.second == c) {
+                                distSq *= 0.78f
+                            }
+
+                            // High precision magnetic snap radius (1.3 cells)
+                            if (distSq < minDistanceSq && distSq <= 1.69f) {
+                                minDistanceSq = distSq
+                                resolvedTarget = Pair(r, c)
+                            }
                         }
                     }
                 }
@@ -197,12 +254,37 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
         val selectedIdx = state.selectedPieceIndex ?: return
         val piece = state.candidatePieces.getOrNull(selectedIdx) ?: return
 
-        // For tap-to-place: anchor at clicked cell (top-left or centered)
-        val targetRow = (row - piece.height / 2).coerceIn(0, GRID_SIZE - piece.height)
-        val targetCol = (col - piece.width / 2).coerceIn(0, GRID_SIZE - piece.width)
+        val maxRow = (GRID_SIZE - piece.height).coerceAtLeast(0)
+        val maxCol = (GRID_SIZE - piece.width).coerceAtLeast(0)
 
-        if (canPlace(piece, targetRow, targetCol, state.grid)) {
-            placePiece(selectedIdx, targetRow, targetCol)
+        val idealRow = (row - piece.height / 2).coerceIn(0, maxRow)
+        val idealCol = (col - piece.width / 2).coerceIn(0, maxCol)
+
+        if (canPlace(piece, idealRow, idealCol, state.grid)) {
+            placePiece(selectedIdx, idealRow, idealCol)
+            _gameState.update { it.copy(selectedPieceIndex = null) }
+            return
+        }
+
+        // Search nearest valid placement within 2 cells around clicked position
+        var bestTarget: Pair<Int, Int>? = null
+        var minDistanceSq = Float.MAX_VALUE
+        for (dr in -2..2) {
+            for (dc in -2..2) {
+                val r = idealRow + dr
+                val c = idealCol + dc
+                if (r in 0..maxRow && c in 0..maxCol && canPlace(piece, r, c, state.grid)) {
+                    val distSq = (dr * dr + dc * dc).toFloat()
+                    if (distSq < minDistanceSq) {
+                        minDistanceSq = distSq
+                        bestTarget = Pair(r, c)
+                    }
+                }
+            }
+        }
+
+        if (bestTarget != null) {
+            placePiece(selectedIdx, bestTarget.first, bestTarget.second)
             _gameState.update { it.copy(selectedPieceIndex = null) }
         }
     }
@@ -248,12 +330,40 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
         val nextCandidates = state.candidatePieces.toMutableList()
         nextCandidates[pieceIndex] = null
 
-        // If all 3 pieces are used, generate 3 new ones
+        // Grid that new pieces will be generated against
+        val effectiveGridForGeneration = if (totalLines > 0) {
+            val cleared = updatedGrid.map { it.toMutableList() }
+            for (r in fullRows) {
+                for (c in 0 until GRID_SIZE) cleared[r][c] = 0
+            }
+            for (c in fullCols) {
+                for (r in 0 until GRID_SIZE) cleared[r][c] = 0
+            }
+            cleared.map { it.toList() }
+        } else {
+            updatedGrid.map { it.toList() }
+        }
+
+        // If all 3 pieces are used, generate 3 new ones with assistant helper
         val allUsed = nextCandidates.all { it == null }
         val finalCandidates = if (allUsed) {
-            BlockPiece.generatePieceSet(allowExtraordinary = state.isExtraordinaryEnabled)
+            BlockPiece.generateAssistedPieceSet(
+                grid = effectiveGridForGeneration,
+                assistantMode = state.assistantMode,
+                allowExtraordinary = state.isExtraordinaryEnabled
+            )
         } else {
             nextCandidates
+        }
+
+        val currentMode = state.assistantMode
+        val currentModeHigh = state.highScoresByMode[currentMode] ?: 0
+        val newHigh = maxOf(newScore, currentModeHigh)
+        val updatedHighScores = if (newHigh > currentModeHigh) {
+            prefs.edit().putInt(currentMode.prefKey, newHigh).apply()
+            state.highScoresByMode + (currentMode to newHigh)
+        } else {
+            state.highScoresByMode
         }
 
         if (totalLines > 0) {
@@ -290,9 +400,12 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
                 else -> "BLAST!"
             }
 
-            val newHigh = maxOf(newScore, state.highScore)
-            if (newHigh > state.highScore) {
-                prefs.edit().putInt("HIGH_SCORE", newHigh).apply()
+            val postBlastHigh = maxOf(newScore, currentModeHigh)
+            val finalHighScores = if (postBlastHigh > currentModeHigh) {
+                prefs.edit().putInt(currentMode.prefKey, postBlastHigh).apply()
+                updatedHighScores + (currentMode to postBlastHigh)
+            } else {
+                updatedHighScores
             }
 
             haptics.blastClear(totalLines)
@@ -301,7 +414,8 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
                 grid = updatedGrid.map { it.toList() },
                 candidatePieces = finalCandidates,
                 score = newScore,
-                highScore = newHigh,
+                highScore = postBlastHigh,
+                highScoresByMode = finalHighScores,
                 comboStreak = newCombo,
                 blastingCells = blastCoords,
                 floatingAlert = null,
@@ -336,11 +450,6 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
             }
         } else {
             // No lines cleared
-            val newHigh = maxOf(newScore, state.highScore)
-            if (newHigh > state.highScore) {
-                prefs.edit().putInt("HIGH_SCORE", newHigh).apply()
-            }
-
             val gameOver = checkGameOver(finalCandidates, updatedGrid.map { it.toList() })
             if (gameOver) {
                 haptics.gameOver()
@@ -351,6 +460,7 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
                 candidatePieces = finalCandidates,
                 score = newScore,
                 highScore = newHigh,
+                highScoresByMode = updatedHighScores,
                 comboStreak = 0,
                 blastingCells = emptySet(),
                 isGameOver = gameOver,
@@ -362,25 +472,43 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
     fun restartGame() {
         haptics.piecePickup()
         _dragState.value = DragState()
-        val isExtra = _gameState.value.isExtraordinaryEnabled
-        val isWhiteBorder = _gameState.value.isWhiteBorderEnabled
-        val isPuzzleBorder = _gameState.value.isPuzzleBorderEnabled
-        val isGridBorder = _gameState.value.isGridBorderEnabled
+        val current = _gameState.value
+        val emptyGrid = List(GRID_SIZE) { List(GRID_SIZE) { 0 } }
+        val modeHigh = current.highScoresByMode[current.assistantMode] ?: 0
         _gameState.update {
             GameState(
-                grid = List(GRID_SIZE) { List(GRID_SIZE) { 0 } },
-                candidatePieces = BlockPiece.generatePieceSet(allowExtraordinary = isExtra),
+                grid = emptyGrid,
+                candidatePieces = BlockPiece.generateAssistedPieceSet(
+                    grid = emptyGrid,
+                    assistantMode = current.assistantMode,
+                    allowExtraordinary = current.isExtraordinaryEnabled
+                ),
                 score = 0,
-                highScore = it.highScore,
+                highScore = modeHigh,
+                assistantMode = current.assistantMode,
+                highScoresByMode = current.highScoresByMode,
                 comboStreak = 0,
                 isGameOver = false,
                 blastingCells = emptySet(),
                 floatingAlert = null,
                 selectedPieceIndex = null,
-                isExtraordinaryEnabled = isExtra,
-                isWhiteBorderEnabled = isWhiteBorder,
-                isPuzzleBorderEnabled = isPuzzleBorder,
-                isGridBorderEnabled = isGridBorder
+                isExtraordinaryEnabled = current.isExtraordinaryEnabled,
+                isWhiteBorderEnabled = current.isWhiteBorderEnabled,
+                isPuzzleBorderEnabled = current.isPuzzleBorderEnabled,
+                isGridBorderEnabled = current.isGridBorderEnabled,
+                isHapticsEnabled = current.isHapticsEnabled
+            )
+        }
+    }
+
+    fun setAssistantMode(mode: AssistantMode) {
+        prefs.edit().putString("ASSISTANT_MODE", mode.name).apply()
+        _gameState.update {
+            val emptyGrid = List(GRID_SIZE) { List(GRID_SIZE) { 0 } }
+            val modeHigh = it.highScoresByMode[mode] ?: 0
+            it.copy(
+                assistantMode = mode,
+                highScore = modeHigh
             )
         }
     }
@@ -414,6 +542,9 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun toggleHaptics() {
-        haptics.isHapticsEnabled = !haptics.isHapticsEnabled
+        val newMode = !_gameState.value.isHapticsEnabled
+        prefs.edit().putBoolean("HAPTICS_ENABLED", newMode).apply()
+        haptics.isHapticsEnabled = newMode
+        _gameState.update { it.copy(isHapticsEnabled = newMode) }
     }
 }

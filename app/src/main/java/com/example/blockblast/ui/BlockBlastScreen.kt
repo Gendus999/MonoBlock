@@ -68,6 +68,7 @@ fun BlockBlastScreen(
             ScoreHeader(
                 score = gameState.score,
                 highScore = gameState.highScore,
+                assistantMode = gameState.assistantMode,
                 onOpenSettings = { isSettingsOpen = true }
             )
 
@@ -127,7 +128,10 @@ fun BlockBlastScreen(
         // 5. Settings Modal
         SettingsDialog(
             isOpen = isSettingsOpen,
-            isHapticsEnabled = viewModel.haptics.isHapticsEnabled,
+            currentAssistantMode = gameState.assistantMode,
+            highScoresByMode = gameState.highScoresByMode,
+            onSelectAssistantMode = { viewModel.setAssistantMode(it) },
+            isHapticsEnabled = gameState.isHapticsEnabled,
             onToggleHaptics = { viewModel.toggleHaptics() },
             isExtraordinaryEnabled = gameState.isExtraordinaryEnabled,
             onToggleExtraordinary = { viewModel.toggleExtraordinaryBlocks() },

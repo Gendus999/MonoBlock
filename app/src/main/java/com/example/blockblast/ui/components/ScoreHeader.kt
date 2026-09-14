@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.blockblast.model.AssistantMode
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -41,6 +42,7 @@ fun ScoreHeader(
     score: Int,
     highScore: Int,
     onOpenSettings: () -> Unit,
+    assistantMode: AssistantMode = AssistantMode.OFF,
     modifier: Modifier = Modifier
 ) {
     val formatter = NumberFormat.getIntegerInstance(Locale.US)
@@ -82,11 +84,12 @@ fun ScoreHeader(
                 Icon(
                     imageVector = Icons.Rounded.EmojiEvents,
                     contentDescription = null,
-                    tint = Color(0xFF8E8E9B),
+                    tint = if (assistantMode != AssistantMode.OFF) Color(0xFFFFD54F) else Color(0xFF8E8E9B),
                     modifier = Modifier.size(12.dp)
                 )
+                val bestPrefix = if (assistantMode != AssistantMode.OFF) "BEST (${assistantMode.title.uppercase()})" else "BEST"
                 Text(
-                    text = "BEST  ${formatter.format(highScore)}",
+                    text = "$bestPrefix  ${formatter.format(highScore)}",
                     color = Color(0xFF8E8E9B),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,

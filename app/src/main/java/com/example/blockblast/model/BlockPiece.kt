@@ -273,5 +273,159 @@ data class BlockPiece(
             }
             return pieces
         }
+
+        fun canShapeFit(shape: List<List<Boolean>>, grid: List<List<Int>>): Boolean {
+            val h = shape.size
+            val w = if (h > 0) shape[0].size else 0
+            for (r in 0..(8 - h)) {
+                for (c in 0..(8 - w)) {
+                    var fits = true
+                    for (dr in 0 until h) {
+                        for (dc in 0 until w) {
+                            if (shape[dr][dc] && grid[r + dr][c + dc] != 0) {
+                                fits = false
+                                break
+                            }
+                        }
+                        if (!fits) break
+                    }
+                    if (fits) return true
+                }
+            }
+            return false
+        }
+
+        fun doesShapeClearLine(shape: List<List<Boolean>>, grid: List<List<Int>>): Boolean {
+            val h = shape.size
+            val w = if (h > 0) shape[0].size else 0
+            for (r in 0..(8 - h)) {
+                for (c in 0..(8 - w)) {
+                    var fits = true
+                    for (dr in 0 until h) {
+                        for (dc in 0 until w) {
+                            if (shape[dr][dc] && grid[r + dr][c + dc] != 0) {
+                                fits = false
+                                break
+                            }
+                        }
+                        if (!fits) break
+                    }
+                    if (fits) {
+                        for (dr in 0 until h) {
+                            val testRow = r + dr
+                            val rowComplete = (0 until 8).all { colIdx ->
+                                (grid[testRow][colIdx] != 0) || (colIdx in c until (c + w) && shape[dr][colIdx - c])
+                            }
+                            if (rowComplete) return true
+                        }
+                        for (dc in 0 until w) {
+                            val testCol = c + dc
+                            val colComplete = (0 until 8).all { rowIdx ->
+                                (grid[rowIdx][testCol] != 0) || (rowIdx in r until (r + h) && shape[rowIdx - r][dc])
+                            }
+                            if (colComplete) return true
+                        }
+                    }
+                }
+            }
+            return false
+        }
+
+        fun generateAssistedPieceSet(
+            grid: List<List<Int>>,
+            assistantMode: AssistantMode,
+            allowExtraordinary: Boolean = false
+        ): List<BlockPiece> {
+            if (assistantMode == AssistantMode.OFF) {
+                return generatePieceSet(allowExtraordinary)
+            }
+
+            val pool = if (allowExtraordinary) ALL_SHAPES else BASIC_SHAPES
+            val fitShapes = pool.filter { canShapeFit(it, grid) }
+            val clearingShapes = fitShapes.filter { doesShapeClearLine(it, grid) }
+            val smallShapes = (if (fitShapes.isNotEmpty()) fitShapes else pool).filter { shape ->
+                shape.sumOf { row -> row.count { it } } <= 4
+            }
+
+            val selectedShapes = mutableListOf<List<List<Boolean>>>()
+
+            when (assistantMode) {
+                AssistantMode.LOT -> {
+                    // LOT: Very helpful, actively prioritizes clearing and fitting shapes
+                    if (clearingShapes.isNotEmpty()) {
+                        selectedShapes.add(clearingShapes.random())
+                    } else if (smallShapes.isNotEmpty()) {
+                        selectedShapes.add(smallShapes.random())
+                    } else if (fitShapes.isNotEmpty()) {
+                        selectedShapes.add(fitShapes.random())
+                    } else {
+                        selectedShapes.add(pool.random())
+                    }
+
+                    if (clearingShapes.size > 1 && Random.nextFloat() < 0.65f) {
+                        selectedShapes.add(clearingShapes.random())
+                    } else if (smallShapes.isNotEmpty()) {
+                        selectedShapes.add(smallShapes.random())
+                    } else if (fitShapes.isNotEmpty()) {
+                        selectedShapes.add(fitShapes.random())
+                    } else {
+                        selectedShapes.add(pool.random())
+                    }
+
+                    if (fitShapes.isNotEmpty()) {
+                        selectedShapes.add(fitShapes.random())
+                    } else {
+                        selectedShapes.add(pool.random())
+                    }
+                }
+                AssistantMode.MEDIUM -> {
+                    // MEDIUM: Moderately helpful (~70% line clearing chance)
+                    if (clearingShapes.isNotEmpty() && Random.nextFloat() < 0.70f) {
+                        selectedShapes.add(clearingShapes.random())
+                    } else if (smallShapes.isNotEmpty()) {
+                        selectedShapes.add(smallShapes.random())
+                    } else if (fitShapes.isNotEmpty()) {
+                        selectedShapes.add(fitShapes.random())
+                    } else {
+                        selectedShapes.add(pool.random())
+                    }
+
+                    if (smallShapes.isNotEmpty()) {
+                        selectedShapes.add(smallShapes.random())
+                    } else if (fitShapes.isNotEmpty()) {
+                        selectedShapes.add(fitShapes.random())
+                    } else {
+                        selectedShapes.add(pool.random())
+                    }
+
+                    selectedShapes.add(pool.random())
+                }
+                AssistantMode.LOW -> {
+                    // LOW: Subtle help (~35% line clearing chance)
+                    if (clearingShapes.isNotEmpty() && Random.nextFloat() < 0.35f) {
+                        selectedShapes.add(clearingShapes.random())
+                    } else if (smallShapes.isNotEmpty() && Random.nextFloat() < 0.50f) {
+                        selectedShapes.add(smallShapes.random())
+                    } else {
+                        selectedShapes.add(pool.random())
+                    }
+
+                    if (smallShapes.isNotEmpty()) {
+                        selectedShapes.add(smallShapes.random())
+                    } else {
+                        selectedShapes.add(pool.random())
+                    }
+
+                    selectedShapes.add(pool.random())
+                }
+                AssistantMode.OFF -> {
+                    return generatePieceSet(allowExtraordinary)
+                }
+            }
+
+            return selectedShapes.shuffled().map { shape ->
+                BlockPiece(matrix = shape, colorVariant = Random.nextInt(0, 3))
+            }
+        }
     }
 }

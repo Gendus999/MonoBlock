@@ -13,6 +13,13 @@ data class GameState(
     val candidatePieces: List<BlockPiece?> = BlockPiece.generatePieceSet(),
     val score: Int = 0,
     val highScore: Int = 0,
+    val assistantMode: AssistantMode = AssistantMode.OFF,
+    val highScoresByMode: Map<AssistantMode, Int> = mapOf(
+        AssistantMode.LOT to 0,
+        AssistantMode.MEDIUM to 0,
+        AssistantMode.LOW to 0,
+        AssistantMode.OFF to 0
+    ),
     val comboStreak: Int = 0,
     val isGameOver: Boolean = false,
     val blastingCells: Set<Pair<Int, Int>> = emptySet(),
@@ -21,5 +28,6 @@ data class GameState(
     val isExtraordinaryEnabled: Boolean = false,
     val isWhiteBorderEnabled: Boolean = true,
     val isPuzzleBorderEnabled: Boolean = false,
-    val isGridBorderEnabled: Boolean = true
+    val isGridBorderEnabled: Boolean = true,
+    val isHapticsEnabled: Boolean = true
 )

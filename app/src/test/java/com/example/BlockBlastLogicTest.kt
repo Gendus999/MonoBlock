@@ -78,4 +78,39 @@ class BlockBlastLogicTest {
         val dotPiece = BlockPiece(matrix = listOf(listOf(true)))
         assertTrue(viewModel.canPlace(dotPiece, 0, 0, customGrid))
     }
+
+    @Test
+    fun `test assistant modes and high score tracking`() {
+        val initialMode = viewModel.gameState.value.assistantMode
+        assertEquals(com.example.blockblast.model.AssistantMode.OFF, initialMode)
+
+        // Switch to LOT
+        viewModel.setAssistantMode(com.example.blockblast.model.AssistantMode.LOT)
+        assertEquals(com.example.blockblast.model.AssistantMode.LOT, viewModel.gameState.value.assistantMode)
+
+        // Switch to MEDIUM
+        viewModel.setAssistantMode(com.example.blockblast.model.AssistantMode.MEDIUM)
+        assertEquals(com.example.blockblast.model.AssistantMode.MEDIUM, viewModel.gameState.value.assistantMode)
+
+        // Switch to LOW
+        viewModel.setAssistantMode(com.example.blockblast.model.AssistantMode.LOW)
+        assertEquals(com.example.blockblast.model.AssistantMode.LOW, viewModel.gameState.value.assistantMode)
+
+        // Verify highScoresByMode contains all 4 modes
+        val scores = viewModel.gameState.value.highScoresByMode
+        assertTrue(scores.containsKey(com.example.blockblast.model.AssistantMode.LOT))
+        assertTrue(scores.containsKey(com.example.blockblast.model.AssistantMode.MEDIUM))
+        assertTrue(scores.containsKey(com.example.blockblast.model.AssistantMode.LOW))
+        assertTrue(scores.containsKey(com.example.blockblast.model.AssistantMode.OFF))
+    }
+
+    @Test
+    fun `test assisted piece generation produces valid pieces`() {
+        val emptyGrid = List(GRID_SIZE) { List(GRID_SIZE) { 0 } }
+        for (mode in com.example.blockblast.model.AssistantMode.values()) {
+            val pieces = BlockPiece.generateAssistedPieceSet(emptyGrid, mode, allowExtraordinary = false)
+            assertEquals(3, pieces.size)
+            assertEquals(3, pieces.filterNotNull().size)
+        }
+    }
 }

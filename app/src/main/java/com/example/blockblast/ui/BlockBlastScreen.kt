@@ -131,6 +131,12 @@ fun BlockBlastScreen(
             onToggleHaptics = { viewModel.toggleHaptics() },
             isExtraordinaryEnabled = gameState.isExtraordinaryEnabled,
             onToggleExtraordinary = { viewModel.toggleExtraordinaryBlocks() },
+            isWhiteBorderEnabled = gameState.isWhiteBorderEnabled,
+            onToggleWhiteBorder = { viewModel.toggleWhiteBorder() },
+            isGridBorderEnabled = gameState.isGridBorderEnabled,
+            onToggleGridBorder = { viewModel.toggleGridBorder() },
+            isPuzzleBorderEnabled = gameState.isPuzzleBorderEnabled,
+            onTogglePuzzleBorder = { viewModel.togglePuzzleBorder() },
             onRestartGame = { viewModel.restartGame() },
             onDismiss = { isSettingsOpen = false }
         )

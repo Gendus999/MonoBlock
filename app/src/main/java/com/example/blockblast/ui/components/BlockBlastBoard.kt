@@ -81,13 +81,19 @@ fun BlockBlastBoard(
         }
     }
 
+    val borderModifier = if (gameState.isWhiteBorderEnabled) {
+        Modifier.border(1.8.dp, Color.White, RoundedCornerShape(20.dp))
+    } else {
+        Modifier.border(1.2.dp, Color(0xFF1E1E28), RoundedCornerShape(20.dp))
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .clip(RoundedCornerShape(20.dp))
             .background(Color(0xFF0C0C10))
-            .border(1.2.dp, Color(0xFF1E1E28), RoundedCornerShape(20.dp))
+            .then(borderModifier)
             .padding(8.dp)
             .testTag("block_blast_board")
             .onGloballyPositioned { coordinates ->
@@ -145,7 +151,8 @@ fun BlockBlastBoard(
                     drawEmptySlot(
                         topLeft = topLeft,
                         size = cellSizeObject,
-                        cornerRadiusPx = cornerRadius
+                        cornerRadiusPx = cornerRadius,
+                        hasWhiteBorder = gameState.isGridBorderEnabled
                     )
 
                     if (isBlasting) {

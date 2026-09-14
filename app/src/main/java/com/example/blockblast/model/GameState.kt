@@ -18,5 +18,8 @@ data class GameState(
     val blastingCells: Set<Pair<Int, Int>> = emptySet(),
     val floatingAlert: FloatingAlert? = null,
     val selectedPieceIndex: Int? = null,
-    val isExtraordinaryEnabled: Boolean = false
+    val isExtraordinaryEnabled: Boolean = false,
+    val isWhiteBorderEnabled: Boolean = true,
+    val isPuzzleBorderEnabled: Boolean = false,
+    val isGridBorderEnabled: Boolean = true
 )

@@ -23,6 +23,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.CropSquare
+import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material3.Icon
@@ -47,6 +50,12 @@ fun SettingsDialog(
     onToggleHaptics: () -> Unit,
     isExtraordinaryEnabled: Boolean,
     onToggleExtraordinary: () -> Unit,
+    isWhiteBorderEnabled: Boolean,
+    onToggleWhiteBorder: () -> Unit,
+    isGridBorderEnabled: Boolean,
+    onToggleGridBorder: () -> Unit,
+    isPuzzleBorderEnabled: Boolean,
+    onTogglePuzzleBorder: () -> Unit,
     onRestartGame: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
@@ -203,6 +212,159 @@ fun SettingsDialog(
                                 uncheckedTrackColor = Color(0xFF181820)
                             ),
                             modifier = Modifier.testTag("extraordinary_blocks_switch")
+                        )
+                    }
+
+                    // White Board Border Setting Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF0D0D11))
+                            .border(1.dp, Color(0xFF1A1A22), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.CropSquare,
+                                contentDescription = null,
+                                tint = if (isWhiteBorderEnabled) Color.White else Color(0xFF6B6B78),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "Svetlý biely rámček",
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (isWhiteBorderEnabled) "Zapnutý (zvýraznené plátno)" else "Vypnutý (jemný tmavý okraj)",
+                                    color = Color(0xFF7A7A88),
+                                    fontSize = 11.sp,
+                                    lineHeight = 14.sp
+                                )
+                            }
+                        }
+
+                        Switch(
+                            checked = isWhiteBorderEnabled,
+                            onCheckedChange = { onToggleWhiteBorder() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.Black,
+                                checkedTrackColor = Color.White,
+                                uncheckedThumbColor = Color(0xFF7A7A88),
+                                uncheckedTrackColor = Color(0xFF181820)
+                            ),
+                            modifier = Modifier.testTag("white_border_switch")
+                        )
+                    }
+
+                    // Grid Cells White Border Setting Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF0D0D11))
+                            .border(1.dp, Color(0xFF1A1A22), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.GridView,
+                                contentDescription = null,
+                                tint = if (isGridBorderEnabled) Color.White else Color(0xFF6B6B78),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "Biele políčka plátna",
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (isGridBorderEnabled) "Zapnuté (biele obrysy 8×8 kociek)" else "Vypnuté (pôvodné tmavé políčka)",
+                                    color = Color(0xFF7A7A88),
+                                    fontSize = 11.sp,
+                                    lineHeight = 14.sp
+                                )
+                            }
+                        }
+
+                        Switch(
+                            checked = isGridBorderEnabled,
+                            onCheckedChange = { onToggleGridBorder() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.Black,
+                                checkedTrackColor = Color.White,
+                                uncheckedThumbColor = Color(0xFF7A7A88),
+                                uncheckedTrackColor = Color(0xFF181820)
+                            ),
+                            modifier = Modifier.testTag("grid_border_switch")
+                        )
+                    }
+
+                    // Puzzle White Border Setting Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF0D0D11))
+                            .border(1.dp, Color(0xFF1A1A22), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Extension,
+                                contentDescription = null,
+                                tint = if (isPuzzleBorderEnabled) Color.White else Color(0xFF6B6B78),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "Biely rámček Puzzle",
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (isPuzzleBorderEnabled) "Zapnutý (zvýraznené puzzle dieliky)" else "Vypnutý (jemný tmavý okraj)",
+                                    color = Color(0xFF7A7A88),
+                                    fontSize = 11.sp,
+                                    lineHeight = 14.sp
+                                )
+                            }
+                        }
+
+                        Switch(
+                            checked = isPuzzleBorderEnabled,
+                            onCheckedChange = { onTogglePuzzleBorder() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.Black,
+                                checkedTrackColor = Color.White,
+                                uncheckedThumbColor = Color(0xFF7A7A88),
+                                uncheckedTrackColor = Color(0xFF181820)
+                            ),
+                            modifier = Modifier.testTag("puzzle_border_switch")
                         )
                     }
 

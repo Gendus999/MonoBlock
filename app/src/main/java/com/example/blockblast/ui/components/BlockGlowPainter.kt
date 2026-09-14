@@ -110,7 +110,8 @@ fun DrawScope.drawGlowingWhiteBlock(
 fun DrawScope.drawEmptySlot(
     topLeft: Offset,
     size: Size,
-    cornerRadiusPx: Float = 12f
+    cornerRadiusPx: Float = 12f,
+    hasWhiteBorder: Boolean = false
 ) {
     // Cell background - subtly, gently lighter so the 8x8 grid cells are clearly visible
     drawRoundRect(
@@ -120,13 +121,15 @@ fun DrawScope.drawEmptySlot(
         cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx)
     )
 
-    // Subtle dark border for clean definition
+    // Border definition: crisp white border when enabled, subtle dark border otherwise
+    val slotBorderColor = if (hasWhiteBorder) Color(0xEEFFFFFF) else Color(0xFF252535)
+    val slotBorderWidth = if (hasWhiteBorder) 1.5f else 1.2f
     drawRoundRect(
-        color = Color(0xFF252535),
+        color = slotBorderColor,
         topLeft = topLeft,
         size = size,
         cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
-        style = Stroke(width = 1.2f)
+        style = Stroke(width = slotBorderWidth)
     )
 
     // Subtle inner top shadow

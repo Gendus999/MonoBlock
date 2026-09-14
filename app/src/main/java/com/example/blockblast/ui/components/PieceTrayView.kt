@@ -65,6 +65,7 @@ fun PieceTrayView(
                 isBeingDragged = isBeingDragged,
                 isSelected = isSelected,
                 canFit = canFit,
+                isPuzzleBorderEnabled = gameState.isPuzzleBorderEnabled,
                 onStartDrag = onStartDrag,
                 onUpdateDrag = onUpdateDrag,
                 onEndDrag = onEndDrag,
@@ -84,6 +85,7 @@ private fun PieceTraySlot(
     isBeingDragged: Boolean,
     isSelected: Boolean,
     canFit: Boolean,
+    isPuzzleBorderEnabled: Boolean,
     onStartDrag: (Int, Offset) -> Unit,
     onUpdateDrag: (Offset) -> Unit,
     onEndDrag: () -> Unit,
@@ -98,13 +100,24 @@ private fun PieceTraySlot(
     val latestOnEndDrag by androidx.compose.runtime.rememberUpdatedState(onEndDrag)
     val latestOnSelectPiece by androidx.compose.runtime.rememberUpdatedState(onSelectPiece)
 
+    val slotBorderWidth = when {
+        isSelected -> 2.2.dp
+        isPuzzleBorderEnabled -> 1.8.dp
+        else -> 1.dp
+    }
+    val slotBorderColor = when {
+        isSelected -> Color.White
+        isPuzzleBorderEnabled -> Color.White
+        else -> Color(0xFF181822)
+    }
+
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .background(Color(0xFF08080B))
             .border(
-                width = if (isSelected) 1.5.dp else 1.dp,
-                color = if (isSelected) Color.White else Color(0xFF181822),
+                width = slotBorderWidth,
+                color = slotBorderColor,
                 shape = RoundedCornerShape(14.dp)
             )
             .onGloballyPositioned { coordinates ->

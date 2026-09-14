@@ -39,10 +39,16 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
     init {
         val savedHigh = prefs.getInt("HIGH_SCORE", 0)
         val savedExtraordinary = prefs.getBoolean("EXTRAORDINARY_BLOCKS", false)
+        val savedWhiteBorder = prefs.getBoolean("WHITE_BORDER", true)
+        val savedPuzzleBorder = prefs.getBoolean("PUZZLE_BORDER", false)
+        val savedGridBorder = prefs.getBoolean("GRID_BORDER", true)
         _gameState.update {
             it.copy(
                 highScore = savedHigh,
                 isExtraordinaryEnabled = savedExtraordinary,
+                isWhiteBorderEnabled = savedWhiteBorder,
+                isPuzzleBorderEnabled = savedPuzzleBorder,
+                isGridBorderEnabled = savedGridBorder,
                 candidatePieces = BlockPiece.generatePieceSet(allowExtraordinary = savedExtraordinary)
             )
         }
@@ -357,6 +363,9 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
         haptics.piecePickup()
         _dragState.value = DragState()
         val isExtra = _gameState.value.isExtraordinaryEnabled
+        val isWhiteBorder = _gameState.value.isWhiteBorderEnabled
+        val isPuzzleBorder = _gameState.value.isPuzzleBorderEnabled
+        val isGridBorder = _gameState.value.isGridBorderEnabled
         _gameState.update {
             GameState(
                 grid = List(GRID_SIZE) { List(GRID_SIZE) { 0 } },
@@ -368,7 +377,10 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
                 blastingCells = emptySet(),
                 floatingAlert = null,
                 selectedPieceIndex = null,
-                isExtraordinaryEnabled = isExtra
+                isExtraordinaryEnabled = isExtra,
+                isWhiteBorderEnabled = isWhiteBorder,
+                isPuzzleBorderEnabled = isPuzzleBorder,
+                isGridBorderEnabled = isGridBorder
             )
         }
     }
@@ -378,6 +390,27 @@ class BlockBlastViewModel(application: Application) : AndroidViewModel(applicati
         val newMode = !current
         prefs.edit().putBoolean("EXTRAORDINARY_BLOCKS", newMode).apply()
         _gameState.update { it.copy(isExtraordinaryEnabled = newMode) }
+    }
+
+    fun toggleWhiteBorder() {
+        val current = _gameState.value.isWhiteBorderEnabled
+        val newMode = !current
+        prefs.edit().putBoolean("WHITE_BORDER", newMode).apply()
+        _gameState.update { it.copy(isWhiteBorderEnabled = newMode) }
+    }
+
+    fun togglePuzzleBorder() {
+        val current = _gameState.value.isPuzzleBorderEnabled
+        val newMode = !current
+        prefs.edit().putBoolean("PUZZLE_BORDER", newMode).apply()
+        _gameState.update { it.copy(isPuzzleBorderEnabled = newMode) }
+    }
+
+    fun toggleGridBorder() {
+        val current = _gameState.value.isGridBorderEnabled
+        val newMode = !current
+        prefs.edit().putBoolean("GRID_BORDER", newMode).apply()
+        _gameState.update { it.copy(isGridBorderEnabled = newMode) }
     }
 
     fun toggleHaptics() {
